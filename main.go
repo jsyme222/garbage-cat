@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/binary"
@@ -8,6 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -50,6 +52,30 @@ var contract *abi.Contract
 var account crypto.Account
 var signer transaction.BasicAccountTransactionSigner
 var buyCoinMethod abi.Method
+
+type DiscordWebhookMessage struct {
+	Content string `json:"content"`
+}
+
+func sendDiscordNotification(webhookURL, message string) error {
+	msg := DiscordWebhookMessage{Content: message}
+	jsonData, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+
+	resp, err := http.Post(webhookURL, "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to send notification, status code: %d", resp.StatusCode)
+	}
+
+	return nil
+}
 
 func main() {
 
@@ -358,6 +384,13 @@ func buyToken(assetName string, assetID uint64, amount uint64) error {
 
 	// result, err := atc.Simulate(context.Background(), Algod, models.SimulateRequest{})
 	_, err = atc.Execute(Algod, context.Background(), 4)
+	if err != nil {
+		return err
+	}
+
+	webhookURL := "https://discord.com/api/webhooks/1321898236881145886/J5wU3xmJDTW7wTySxTuXHIBnHdt-AoBmy1VxjoeY3j3wh1dYJigZdCXo84xP_voNvSQ4"
+	message := fmt.Sprintf("Token purchase successful for asset ID: %s", assetName)
+	err = sendDiscordNotification(webhookURL, message)
 	if err != nil {
 		return err
 	}
