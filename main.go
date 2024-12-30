@@ -84,7 +84,7 @@ func main() {
 	flag.Parse()
 
 	fmt.Println("")
-	fmt.Printf("Purchasing: %v Algo worth of every new token", color.YellowString("%v", purchaseAmount/100_000))
+	fmt.Printf("Purchasing: %v Algo worth of every new token", color.YellowString("%v", purchaseAmount/1_000_000))
 	fmt.Println("")
 
 	setup()
@@ -198,6 +198,8 @@ func ProcessBlock(b *watcher.BlockWrap) {
 					fmt.Printf("[PURCHASED]      [%s]: %v\n", name, (purchaseAmount / 100_000))
 				case RugNinjaBuy:
 				case RugNinjaSell:
+				default:
+					fmt.Println("Unknown Arg: ", encodedArg)
 				}
 			}
 		}
