@@ -202,7 +202,7 @@ func ProcessBlock(b *watcher.BlockWrap) {
 
 					fmt.Printf("[PURCHASED]      [%s]: %v\n", name, (purchaseAmount / 100_000))
 					if waitToSellTime > 0 {
-						err = waitAndSellAllAssets(assetID)
+						err = waitAndSellAllAssets(assetID, waitToSellTime)
 						if err != nil {
 							fmt.Println(err)
 							continue
