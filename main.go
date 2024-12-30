@@ -420,7 +420,7 @@ func buyToken(assetName string, assetID uint64, amount uint64) error {
 	return nil
 }
 
-func sellToken(assetName string, assetID uint64, amount uint64) error {
+func sellToken(assetID uint64, amount uint64) error {
 	txParams, err := Algod.SuggestedParams().Do(context.Background())
 	if err != nil {
 		return err
@@ -467,7 +467,7 @@ func sellToken(assetName string, assetID uint64, amount uint64) error {
 	}
 
 	webhookURL := "https://discord.com/api/webhooks/1321898236881145886/J5wU3xmJDTW7wTySxTuXHIBnHdt-AoBmy1VxjoeY3j3wh1dYJigZdCXo84xP_voNvSQ4"
-	message := fmt.Sprintf("[SALE] Token SALE successful for: %s", assetName)
+	message := fmt.Sprintf("[SALE] Token SALE successful for: %d", assetID)
 	err = sendDiscordNotification(webhookURL, message)
 	if err != nil {
 		return err
@@ -489,7 +489,7 @@ func waitAndSellAllAssets(assetID uint64) error {
 	// Find the asset and sell it
 	for _, asset := range accountInfo.Assets {
 		if asset.AssetId == assetID {
-			err := sellToken("AssetName", assetID, asset.Amount) // Replace "AssetName" with the actual asset name
+			err := sellToken(assetID, asset.Amount) // Replace "AssetName" with the actual asset name
 			if err != nil {
 				return err
 			}
