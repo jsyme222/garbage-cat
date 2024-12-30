@@ -54,6 +54,7 @@ var contract *abi.Contract
 var account crypto.Account
 var signer transaction.BasicAccountTransactionSigner
 var buyCoinMethod abi.Method
+var sellCoinMethod abi.Method
 
 type DiscordWebhookMessage struct {
 	Content string `json:"content"`
@@ -198,19 +199,21 @@ func ProcessBlock(b *watcher.BlockWrap) {
 					}
 
 					fmt.Printf("[PURCHASED]      [%s]: %v\n", name, (purchaseAmount / 100_000))
+					err = waitAndSellAllAssets(assetID)
+					if err != nil {
+						fmt.Println(err)
+						continue
+					}
 				case RugNinjaBuy:
 				case RugNinjaSell:
 				case LPBonded:
 					fmt.Println("LP Bonded")
-					assetID := stxn.EvalDelta.GlobalDelta["LAST_COIN"].Uint
-					name := stxn.EvalDelta.InnerTxns[0].Txn.AssetConfigTxnFields.AssetParams.AssetName
-					fmt.Println(assetID, name)
+					asset := txn.ForeignAssets[0]
+					fmt.Println(asset)
 				case ClaimToken:
 					fmt.Println("Claim Token")
-					fmt.Println(stxn.EvalDelta.GlobalDelta)
-					assetID := stxn.EvalDelta.GlobalDelta["LAST_COIN"].Uint
-					name := stxn.EvalDelta.InnerTxns[0].Txn.AssetConfigTxnFields.AssetParams.AssetName
-					fmt.Println(assetID, name)
+					asset := txn.ForeignAssets[0]
+					fmt.Println(asset)
 				default:
 					fmt.Println("Unknown Arg: ", encodedArg)
 				}
@@ -309,6 +312,10 @@ func setup() {
 	if err != nil {
 		log.Fatalln(err)
 	}
+	sellCoinMethod, err = contract.GetMethodByName("sellCoin")
+	if err != nil {
+		log.Fatalln(err)
+	}
 
 	Algod, err = algod.MakeClient(AlgorandNodeURL, "")
 	if err != nil {
@@ -404,10 +411,90 @@ func buyToken(assetName string, assetID uint64, amount uint64) error {
 	}
 
 	webhookURL := "https://discord.com/api/webhooks/1321898236881145886/J5wU3xmJDTW7wTySxTuXHIBnHdt-AoBmy1VxjoeY3j3wh1dYJigZdCXo84xP_voNvSQ4"
-	message := fmt.Sprintf("Token purchase successful for asset ID: %s", assetName)
+	message := fmt.Sprintf("Token purchase successful for: %s", assetName)
 	err = sendDiscordNotification(webhookURL, message)
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func sellToken(assetName string, assetID uint64, amount uint64) error {
+	txParams, err := Algod.SuggestedParams().Do(context.Background())
+	if err != nil {
+		return err
+	}
+
+	atc := transaction.AtomicTransactionComposer{}
+
+	// Create the asset transfer transaction
+	assetTransferTxn, err := transaction.MakeAssetTransferTxn(
+		account.Address.String(),
+		appAddress,
+		amount,
+		nil,
+		txParams,
+		"",
+		assetID,
+	)
+	if err != nil {
+		return err
+	}
+
+	atc.AddTransaction(transaction.TransactionWithSigner{Txn: assetTransferTxn, Signer: signer})
+
+	// Add the method call to the AtomicTransactionComposer
+	mcp := transaction.AddMethodCallParams{
+		AppID:           RugNinjaMainNetAppID,
+		Sender:          account.Address,
+		SuggestedParams: txParams,
+		OnComplete:      types.NoOpOC,
+		Signer:          signer,
+		Method:          sellCoinMethod,
+		MethodArgs:      []interface{}{assetID, amount},
+		ForeignAssets:   []uint64{assetID},
+	}
+
+	err = atc.AddMethodCall(mcp)
+	if err != nil {
+		return err
+	}
+
+	_, err = atc.Execute(Algod, context.Background(), 4)
+	if err != nil {
+		return err
+	}
+
+	webhookURL := "https://discord.com/api/webhooks/1321898236881145886/J5wU3xmJDTW7wTySxTuXHIBnHdt-AoBmy1VxjoeY3j3wh1dYJigZdCXo84xP_voNvSQ4"
+	message := fmt.Sprintf("[SALE] Token SALE successful for: %s", assetName)
+	err = sendDiscordNotification(webhookURL, message)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func waitAndSellAllAssets(assetID uint64) error {
+	// Wait for 5 minutes
+	time.Sleep(5 * time.Minute)
+
+	// Get the account information
+	accountInfo, err := Algod.AccountInformation(account.Address.String()).Do(context.Background())
+	if err != nil {
+		return err
+	}
+
+	// Find the asset and sell it
+	for _, asset := range accountInfo.Assets {
+		if asset.AssetId == assetID {
+			err := sellToken("AssetName", assetID, asset.Amount) // Replace "AssetName" with the actual asset name
+			if err != nil {
+				return err
+			}
+			fmt.Printf("Sold %d units of asset ID %d\n", asset.Amount, assetID)
+		}
 	}
 
 	return nil
