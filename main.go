@@ -425,6 +425,7 @@ func buyToken(assetName string, assetID uint64, amount uint64) error {
 }
 
 func sellToken(assetID uint64, amount uint64) error {
+	fmt.Println("Starting SELL")
 	txParams, err := Algod.SuggestedParams().Do(context.Background())
 	if err != nil {
 		return err
@@ -481,8 +482,9 @@ func sellToken(assetID uint64, amount uint64) error {
 }
 
 func waitAndSellAllAssets(assetID uint64, waitTime uint64) error {
+	fmt.Println("Starting to wait and sell all assets")
 	// Wait for 5 minutes
-	time.Sleep(time.Duration(waitTime) * time.Minute)
+	time.Sleep(time.Duration(waitTime) * time.Second)
 
 	// Get the account information
 	accountInfo, err := Algod.AccountInformation(account.Address.String()).Do(context.Background())
@@ -492,6 +494,7 @@ func waitAndSellAllAssets(assetID uint64, waitTime uint64) error {
 
 	// Find the asset and sell it
 	for _, asset := range accountInfo.Assets {
+		fmt.Println("Checking Asset ID: ", asset.AssetId)
 		if asset.AssetId == assetID {
 			err := sellToken(assetID, asset.Amount) // Replace "AssetName" with the actual asset name
 			if err != nil {
