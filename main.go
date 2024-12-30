@@ -39,6 +39,7 @@ var RugNinjaMainNetAppID uint64 = 2020762574
 var appAddress = "7TL5PKBGPH4W7LEZW5SW5BGC4TH32XVFV5NVTXE4HTTPVK2JUJODCVTHSU"
 
 var purchaseAmount uint64 = 10_000_000
+var waitToSellTime uint64 = 0
 
 var Algod *algod.Client
 var err error
@@ -83,6 +84,7 @@ func sendDiscordNotification(webhookURL, message string) error {
 func main() {
 
 	flag.Uint64Var(&purchaseAmount, "amt", 1_000_000, "set the amount of each new token to purchase in algo")
+	flag.Uint64Var(&waitToSellTime, "wait", 0, "set the amount of time to wait before selling the token")
 
 	flag.Parse()
 
@@ -199,10 +201,12 @@ func ProcessBlock(b *watcher.BlockWrap) {
 					}
 
 					fmt.Printf("[PURCHASED]      [%s]: %v\n", name, (purchaseAmount / 100_000))
-					err = waitAndSellAllAssets(assetID)
-					if err != nil {
-						fmt.Println(err)
-						continue
+					if waitToSellTime > 0 {
+						err = waitAndSellAllAssets(assetID)
+						if err != nil {
+							fmt.Println(err)
+							continue
+						}
 					}
 				case RugNinjaBuy:
 				case RugNinjaSell:
