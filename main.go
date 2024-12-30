@@ -480,9 +480,9 @@ func sellToken(assetID uint64, amount uint64) error {
 	return nil
 }
 
-func waitAndSellAllAssets(assetID uint64) error {
+func waitAndSellAllAssets(assetID uint64, waitTime uint64) error {
 	// Wait for 5 minutes
-	time.Sleep(5 * time.Minute)
+	time.Sleep(time.Duration(waitTime) * time.Minute)
 
 	// Get the account information
 	accountInfo, err := Algod.AccountInformation(account.Address.String()).Do(context.Background())
