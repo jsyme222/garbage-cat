@@ -47,6 +47,8 @@ var txParams types.SuggestedParams
 var RugNinjaTokenMint = "XrzHXA=="
 var RugNinjaBuy = "ul43GA=="
 var RugNinjaSell = "ymo5EA=="
+var LPBonded = "6zXQ7A=="
+var ClaimToken = "VJurBg=="
 
 var contract *abi.Contract
 var account crypto.Account
@@ -198,6 +200,17 @@ func ProcessBlock(b *watcher.BlockWrap) {
 					fmt.Printf("[PURCHASED]      [%s]: %v\n", name, (purchaseAmount / 100_000))
 				case RugNinjaBuy:
 				case RugNinjaSell:
+				case LPBonded:
+					fmt.Println("LP Bonded")
+					assetID := stxn.EvalDelta.GlobalDelta["LAST_COIN"].Uint
+					name := stxn.EvalDelta.InnerTxns[0].Txn.AssetConfigTxnFields.AssetParams.AssetName
+					fmt.Println(assetID, name)
+				case ClaimToken:
+					fmt.Println("Claim Token")
+					fmt.Println(stxn.EvalDelta.GlobalDelta)
+					assetID := stxn.EvalDelta.GlobalDelta["LAST_COIN"].Uint
+					name := stxn.EvalDelta.InnerTxns[0].Txn.AssetConfigTxnFields.AssetParams.AssetName
+					fmt.Println(assetID, name)
 				default:
 					fmt.Println("Unknown Arg: ", encodedArg)
 				}
